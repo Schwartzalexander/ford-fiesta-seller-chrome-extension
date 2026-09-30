@@ -1,0 +1,10 @@
+{
+  "name": "ford-fiesta-seller-chrome-extension",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "check": "node --check background.js && node --check popup.js && node --check profile.js && node --check automation.js && node --check content.js"
+  },
+  "devDependencies": { "jsdom": "^26.1.0" }
+}
