@@ -13,3 +13,4 @@ progress { width: 100%; height: 8px; margin-bottom: 15px; accent-color: #1763df;
 .setting { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
 .setting input { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: #1763df; }
 .setting input:focus-visible { outline: 3px solid #f5b64b; outline-offset: 2px; }
+#open-kleinanzeigen { margin-top: 8px; }

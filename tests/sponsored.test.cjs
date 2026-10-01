@@ -103,6 +103,7 @@ test('popup loads, persists and reverts the sponsored setting when saving fails'
     tabs: { query: async () => [{ id: 1, url: 'https://www.autoscout24.de/' }] },
     runtime: { sendMessage: async () => ({ run: null }) }
   };
+  d.window.eval(read('platforms.js'));
   d.window.eval(read('popup.js'));
   await flush();
   const input = d.window.document.querySelector('#hide-sponsored');
@@ -134,6 +135,7 @@ test('popup offers resume for a previously submitted listing whose free completi
     tabs: { query: async () => [{ id: 1, url: 'https://www.autoscout24.de/account/product-selection' }] },
     runtime: { sendMessage: async () => ({ run }) }
   };
+  d.window.eval(read('platforms.js'));
   d.window.eval(read('popup.js'));
   await flush();
   assert.equal(d.window.document.querySelector('#resume').hidden, false);

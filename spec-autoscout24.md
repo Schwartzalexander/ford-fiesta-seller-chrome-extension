@@ -3,7 +3,9 @@
 ## 1. Ziel und Bedienung
 
 Chrome-Extension (Manifest V3), die das vorgegebene Ford-Fiesta-Inserat auf
-AutoScout24.de erstellt. Ein Klick auf **Auf AutoScout24 inserieren** startet
+AutoScout24.de und Kleinanzeigen.de erstellt. Diese Spezifikation beschreibt
+AutoScout24; der zweite Anbieter ist in `spec-kleinanzeigen.md` dokumentiert.
+Ein Klick auf **Auf AutoScout24 inserieren** startet
 Schritt 0 im aktiven Tab. Anschließend werden Fahrzeug, Kontakt, Preis/Zustand,
 Bilder und Details ausgefüllt und **Veröffentlichen** angeklickt. Danach folgt
 Schritt 6: auf der Paket-Auswahl **Kostenlos weiter** anklicken. Das Popup zeigt
@@ -14,8 +16,9 @@ Das Popup zeigt Fahrzeugübersicht, Status, aktuellen Schritt, Fortschrittsbalke
 nur bei `https://www.autoscout24.de/*` beziehungsweise `https://autoscout24.de/*`.
 Das Popup darf während des Ablaufs geschlossen werden.
 
-Auf anderen Seiten erscheint stattdessen der Button **AutoScout24.de öffnen,
-um dein Auto zu inserieren**. Er öffnet die Verkaufsstartseite in einem neuen
+Auf anderen Seiten erscheinen die Buttons **AutoScout24.de öffnen,
+um dein Auto zu inserieren** und **Kleinanzeigen.de öffnen, um dein Auto zu inserieren**.
+Der erste öffnet die AutoScout24-Verkaufsstartseite in einem neuen
 aktiven Tab und schließt das Popup. Dort kann das Inserieren über die Extension
 gestartet werden.
 
@@ -62,6 +65,7 @@ die Anzahl von 5 Gängen werden so übernommen, wie sie dort gespeichert sind.
 | --- | --- |
 | `manifest.json` | MV3, Berechtigungen, Hosts, Popup, PNG-Icons und Content-Script-Reihenfolge |
 | `background.js` | Ablauf starten/stoppen/fortsetzen, Tabbindung, persistente Statusänderungen, Vorlage bereitstellen |
+| `platforms.js` | Gemeinsame Anbieterkennung, erlaubte Hosts, Einstiegs-URLs und Anzahl der Schritte |
 | `popup.html`, `popup.css`, `popup.js` | Deutsche Bedienoberfläche und Statusanzeige |
 | `profile.js` | HTML-Vorlage mit `DOMParser` inert parsen und Formularprofil erzeugen |
 | `automation.js` | DOM-Erkennung, Felder, Comboboxen, Datumsdialoge, Bilder, Detailabschnitte und Veröffentlichung |
@@ -78,10 +82,11 @@ werden. Die übrigen Snapshots werden zur Laufzeit nicht gebraucht.
 ### Manifest und Datenzugriff
 
 - Berechtigungen: `storage`, `activeTab`.
-- Hostzugriff nur auf die zwei oben genannten AutoScout24-Hosts per HTTPS.
-- Content Scripts im isolierten Kontext: `profile.js`, `automation.js`,
+- Hostzugriff auf die zwei oben genannten AutoScout24-Hosts sowie
+  `www.kleinanzeigen.de`/`kleinanzeigen.de`, jeweils per HTTPS.
+- AutoScout24-Content-Scripts im isolierten Kontext: `platforms.js`, `profile.js`, `automation.js`,
   `content.js`, jeweils bei `document_idle`.
-- Nur `Bilder/*.jpg` sind für diese Hosts `web_accessible_resources`.
+- Nur `Bilder/*.jpg` sind für diese vier Hosts `web_accessible_resources`.
 - Der Worker liest die Vorlage über `fetch(chrome.runtime.getURL(...))` und
   liefert den HTML-Text an das Content Script. `DOMParser` führt darin enthaltene
   Scripts nicht aus. Die Vorlage muss nicht webzugänglich sein.
@@ -423,10 +428,36 @@ wird erst nach erfolgreichem Abschluss als erledigt gespeichert.
 
 Den bearbeitbaren Textbereich
 `#description[contenteditable="true"]` fokussieren, nur dessen Inhalt per DOM-
-Range selektieren und über `document.execCommand("insertHTML", false, html)`
-ersetzen. Dadurch wird der Tiptap/ProseMirror-Editor über den Bearbeitungsweg
-angesprochen. Danach ein `input`-Event senden und den vollständigen Text prüfen.
-Ein bloßes Setzen von `innerHTML` auf der Live-Seite reicht für den Editor nicht.
+Range selektieren. Primär das **unveränderte `#description.innerHTML` aus
+`autoscout24-form-filled.html`** als `text/html` in einen `DataTransfer` legen
+und ein abbrechbares, aufsteigendes `ClipboardEvent("paste")` am Editor auslösen.
+Der Tiptap/ProseMirror-Paste-Handler soll daraus eine Editortransaktion erzeugen,
+die sowohl DOM als auch den Formularzustand aktualisiert. Die Text/Plain-Version
+im Clipboard ist nur die zusätzliche Browserrepräsentation; die AutoScout24-
+Beschreibung wird nicht in Klartext umgewandelt.
+
+Falls Paste nicht verfügbar ist oder die vollständige formatierte Beschreibung
+nicht übernommen wurde, den **aktuellen** Editor erneut suchen, seinen Inhalt
+selektieren und `document.execCommand("insertHTML", false, html)` verwenden.
+Danach ein `input`-Event senden. Kein `innerHTML`-Setter und kein InsertText-/
+Klartext-Fallback auf der Live-Seite. Bei Fehlschlag unterbrechen.
+
+Nach der Eingabe/Blur den neu gerenderten Editor prüfen, niemals nur eine zuvor
+gespeicherte DOM-Referenz. Vollständiger Text **und** Struktur der bedeutungstragenden
+Absätze, Listen/Listenpunkte, Fettdruck, Hervorhebungen und Trennlinie müssen mit
+der Quellvorlage übereinstimmen. Editorattribute, rein leere Abstandabsätze und
+`ProseMirror-trailingBreak` sind keine inhaltlichen Formatunterschiede. Ein
+inhaltlich gleicher Klartext ohne Listen/Fettdruck besteht diese Prüfung nicht.
+Nach weiteren 300 ms erneut prüfen, damit kurzfristiges Neurendern nicht als
+Erfolg gewertet wird.
+
+**Unmittelbar vor Veröffentlichen immer nochmals prüfen**, auch wenn
+`completed` bereits `description` enthält: Beschreibung über die Sidebar öffnen,
+fehlenden oder unformatierten Text erneut übernehmen, zum Kontaktabschnitt und
+zurück zur Beschreibung wechseln und den frischen Editor prüfen. Wird der Text
+dabei gelöscht oder verliert die Quellformatierung, mit konkreter Meldung
+unterbrechen; `publishClicked` bleibt false. Ein alter Abschnittscheckpoint ist
+kein Ersatz für diese Speicherprüfung.
 
 Die vollständige Beschreibung inklusive Highlights, formatierten Listen,
 Absätzen, horizontaler Trennlinie und **Bekannte Mängel** kommt aus der Vorlage.
@@ -436,6 +467,8 @@ nicht verloren gehen. Auch ursprüngliche Schreibweisen bleiben erhalten.
 ### Veröffentlichung
 
 1. Alle zehn Detailabschnitte müssen erfolgreich abgearbeitet sein.
+   Beschreibung inklusive vollständiger Quellformatierung und bekannter Mängel
+   zusätzlich nach dem Abschnittswechsel prüfen, auch beim Fortsetzen.
 2. Auf aktivierten `[data-testid="publish-button"]` warten.
 3. **Vor dem Klick** `publishClicked=true` persistent speichern.
 4. Button **Veröffentlichen** anklicken.
@@ -479,12 +512,14 @@ Nach `freeContinueClicked=true` wird der Abschlussklick nicht wiederholt.
 ## 12. Zustandsmaschine und Wiederaufnahme
 
 Ein aktiver Ablauf insgesamt, gebunden an eine konkrete Tab-ID. Zustand in
-`chrome.storage.local.autoscout24Run`:
+`chrome.storage.local.autoscout24Run` (historischer Schlüsselname, weiterhin
+gemeinsam für beide Anbieter genutzt):
 
 ```js
 {
   id: "UUID",                // neue ID bei Start, Stop und Fortsetzen
   tabId: 123,
+  platform: "autoscout24",    // autoscout24 | kleinanzeigen; alte Zustände ohne Feld = autoscout24
   status: "running",         // running | stopped | error | submitted | done
   step: 0,                   // 0 bis 6
   message: "…",
@@ -492,6 +527,7 @@ Ein aktiver Ablauf insgesamt, gebunden an eine konkrete Tab-ID. Zustand in
   images: "pending",         // pending | uploaded | skipped
   publishClicked: false,
   freeContinueClicked: false,
+  formSubmitted: false,     // nur Kleinanzeigen: Nächster Schritt wurde angeklickt
   updatedAt: 0
 }
 ```
@@ -500,6 +536,11 @@ Nachrichten: `GET_RUN`, `GET_RUN_FOR_TAB`, `GET_TEMPLATE`, `START`, `STOP`,
 `RESUME`, `UPDATE`. Der Worker verarbeitet Änderungen seriell. `UPDATE` wird
 nur bei passender Ablauf-ID, passender Sender-Tab-ID und Status `running`
 akzeptiert. Dadurch überschreiben verspätete Antworten einen Stopp nicht.
+Zusätzlich muss der Sender-Host zum gespeicherten Anbieter passen. `START`
+ermittelt den Anbieter aus dem aktuellen Tab und prüft eine gegebenenfalls
+mitgesendete Anbieterkennung. `RESUME` verlangt den ursprünglichen Anbieter.
+Das Popup zeigt den zum aktiven Host passenden Startbutton, den Anbieter des
+laufenden Ablaufs und dessen eigene Schrittanzahl (AutoScout24: 6, Kleinanzeigen: 3).
 
 Content Scripts prüfen alle 1,5 s und bei Storage-Änderungen, ob der eigene Tab
 zuständig ist. Pro Dokument läuft höchstens eine Bearbeitung gleichzeitig.
@@ -543,6 +584,9 @@ Abbruch während eines Wartevorgangs, Bilder-Fallback, Tabbindung, konkurrierend
 Starts, veraltete Statusänderungen und den vollständigen Detailablauf mit
 Checkpoint vor genau einem Veröffentlichungsklick. jsdom simuliert hierfür die
 Website und den nativen Bearbeitungsbefehl; dies ist kein Live-End-to-End-Test.
+Der Nutzer hat den erfolgreichen tatsächlichen AutoScout24-Ablauf nach der
+Rich-Text-Korrektur bestätigt. Dies ist eine Nutzer-Live-Rückmeldung, kein eigener
+automatisierter Browser-Test.
 
 ### Reproduzierbarer Playwright-Testentwurf
 
@@ -608,11 +652,19 @@ diese Zustände; ein vollständiger Live-Browser-Test ist damit nicht ersetzt.
 
 ## 15. Weitere Plattformen
 
-`profile.js` ist als wiederverwendbare Fahrzeugdatenquelle angelegt. Neue
-Plattformen können einen eigenen DOM-Adapter und eine eigene Ablaufsteuerung
-erhalten. Popup-Hosterkennung, Manifest-Hosts und Worker-Plattformauswahl müssen
-dann um den konkreten Anbieter erweitert werden. Aktuell ist AutoScout24 der
-implementierte Anbieter.
+`profile.js` ist die gemeinsame Fahrzeugdatenquelle; `platforms.js` enthält die
+Anbieterregistry. AutoScout24 und Kleinanzeigen sind implementiert. Kleinanzeigen
+nutzt `kleinanzeigen.js` als eigenen DOM-Adapter und `kleinanzeigen-content.js`
+als Ablaufsteuerung; siehe `spec-kleinanzeigen.md`. Beide verwenden 14.500 €
+und dieselben neun Bilder. Neue Anbieter benötigen einen Registry-Eintrag,
+Manifest-Hosts, einen Adapter und eine Ablaufsteuerung.
+Kleinanzeigen hat den eigenen Titel „Ford Fiesta Vignale 1,0 l EcoBoost Automatik -
+Top Ausstattung“ und eine Textarea-spezifische Beschreibungseingabe; der
+AutoScout24-Modellvariantentitel und die Rich-Text-Übernahme bleiben vorlagenbasiert.
+Auch Kleinanzeigen verwendet ausschließlich den Beschreibungstext dieser Vorlage,
+ohne automatische Kontakt- oder Schadstoffklassenanhänge. Die Kleinanzeigen-Prüfung
+toleriert dort entfernte dekorative Überschriftensymbole; AutoScout24 übernimmt
+weiterhin das vollständige originale HTML samt Formatierung.
 
 ## 16. Zusatzfeature: Gesponserte Angebote ausblenden
 

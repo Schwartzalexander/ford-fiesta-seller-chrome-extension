@@ -98,7 +98,7 @@
       // The worker binds writes to sender.tab.id; a content script on any other
       // AutoScout24 tab must never start editing that tab.
       const { run, mine } = await message({ type: "GET_RUN_FOR_TAB" });
-      if (!mine || run?.status !== "running") return;
+      if (!mine || run?.status !== "running" || (run.platform && run.platform !== "autoscout24")) return;
       await execute(run);
     } catch (error) {
       if (error.name !== "AbortError" && current) {

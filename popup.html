@@ -2,13 +2,14 @@
 <html lang="de">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fiesta Verkäufer</title><link rel="stylesheet" href="popup.css"></head>
 <body>
-  <header><img src="icons/car-48.png" width="48" height="48" alt=""><div><h1>Fiesta Verkäufer</h1><span>AutoScout24</span></div></header>
+  <header><img src="icons/car-48.png" width="48" height="48" alt=""><div><h1>Fiesta Verkäufer</h1><span id="platform-name">AutoScout24 · Kleinanzeigen</span></div></header>
   <main>
     <section class="vehicle"><strong>Ford Fiesta 1.0 EcoBoost S</strong><p>06/2020 · 32.500 km · Automatik</p><b>14.500 €</b><span>9 Fahrzeugbilder</span></section>
     <p id="hint">Aktueller Tab wird geprüft …</p>
     <button id="open-platform" hidden>AutoScout24.de öffnen, um dein Auto zu inserieren</button>
+    <button id="open-kleinanzeigen" class="secondary" hidden>Kleinanzeigen.de öffnen, um dein Auto zu inserieren</button>
     <button id="start" hidden>Auf AutoScout24 inserieren</button>
-    <p class="note">Der Ablauf füllt die Vorlage aus, wartet auf die Bild-Uploads und klickt auf „Veröffentlichen“ sowie anschließend „Kostenlos weiter“.</p>
+    <p id="workflow-note" class="note">Der Ablauf füllt die Fahrzeugdaten aus, wartet auf die Bild-Uploads und schließt das Inserat mit der kostenlosen Option ab.</p>
     <section id="progress" hidden aria-live="polite"><h2 id="step">Status</h2><p id="status"></p><progress id="bar" max="7" value="0"></progress></section>
     <div class="controls"><button id="resume" class="secondary" hidden>Fortsetzen</button><button id="stop" class="secondary" hidden>Stoppen</button></div>
     <section class="settings" aria-labelledby="settings-title">
@@ -18,6 +19,7 @@
     </section>
     <p id="error" role="alert"></p>
   </main>
+  <script src="platforms.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

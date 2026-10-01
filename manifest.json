@@ -2,9 +2,9 @@
   "manifest_version": 3,
   "name": "Fiesta Verkäufer",
   "version": "1.0.0",
-  "description": "Erstellt das Ford-Fiesta-Inserat automatisch auf AutoScout24.",
+  "description": "Erstellt das Ford-Fiesta-Inserat automatisch auf AutoScout24 und Kleinanzeigen.",
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://www.autoscout24.de/*", "https://autoscout24.de/*"],
+  "host_permissions": ["https://www.autoscout24.de/*", "https://autoscout24.de/*", "https://www.kleinanzeigen.de/*", "https://kleinanzeigen.de/*"],
   "background": {"service_worker": "background.js"},
   "action": {
     "default_title": "Fiesta Verkäufer",
@@ -19,11 +19,15 @@
     "run_at": "document_start"
   }, {
     "matches": ["https://www.autoscout24.de/*", "https://autoscout24.de/*"],
-    "js": ["profile.js", "automation.js", "content.js"],
+    "js": ["platforms.js", "profile.js", "automation.js", "content.js"],
+    "run_at": "document_idle"
+  }, {
+    "matches": ["https://www.kleinanzeigen.de/*", "https://kleinanzeigen.de/*"],
+    "js": ["platforms.js", "profile.js", "automation.js", "kleinanzeigen.js", "kleinanzeigen-content.js"],
     "run_at": "document_idle"
   }],
   "web_accessible_resources": [{
     "resources": ["Bilder/*.jpg"],
-    "matches": ["https://www.autoscout24.de/*", "https://autoscout24.de/*"]
+    "matches": ["https://www.autoscout24.de/*", "https://autoscout24.de/*", "https://www.kleinanzeigen.de/*", "https://kleinanzeigen.de/*"]
   }]
 }

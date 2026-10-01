@@ -12,6 +12,7 @@ function dom(html = '', url = 'https://www.autoscout24.de/manual-listing-creatio
   const w = result.window;
   w.HTMLElement.prototype.getClientRects = function () { return [1]; };
   w.HTMLElement.prototype.scrollIntoView = function () {};
+  w.eval(read('platforms.js'));
   w.eval(read('profile.js'));
   w.eval(read('automation.js'));
   return result;
@@ -386,7 +387,7 @@ test('upload falls back without images if packaged files cannot be fetched', asy
   d.window.close();
 });
 
-function worker() {
+function worker(url = 'https://www.autoscout24.de/auto-verkaufen/') {
   const storage = {};
   let listener;
   let navigationCount = 0;
@@ -394,11 +395,12 @@ function worker() {
   const chrome = {
     runtime: { onMessage: { addListener: callback => { listener = callback; } } },
     storage: { local: { get: async key => ({ [key]: storage[key] }), set: async data => { Object.assign(storage, data); } } },
-    tabs: { get: async id => ({ id, url: 'https://www.autoscout24.de/auto-verkaufen/' }), update: async () => { navigationCount++; }, onRemoved: { addListener() {} }, onUpdated: { addListener: callback => { onUpdated = callback; } } }
+    tabs: { get: async id => ({ id, url }), update: async () => { navigationCount++; }, onRemoved: { addListener() {} }, onUpdated: { addListener: callback => { onUpdated = callback; } } }
   };
   const context = vm.createContext({ chrome, crypto: require('node:crypto').webcrypto, URL, console });
+  context.importScripts = file => vm.runInContext(read(file), context);
   vm.runInContext(read('background.js'), context);
-  const send = (message, tabId) => new Promise(resolve => listener(message, tabId ? { tab: { id: tabId, url: 'https://www.autoscout24.de/' } } : {}, resolve));
+  const send = (message, tabId, senderUrl = url) => new Promise(resolve => listener(message, tabId ? { tab: { id: tabId, url: senderUrl } } : {}, resolve));
   return { send, storage, navigations: () => navigationCount, navigate: (tabId, url) => onUpdated(tabId, { url }) };
 }
 
@@ -435,6 +437,21 @@ test('publication navigation keeps the worker active until the free completion s
   await w.send({ type: 'UPDATE', id: run.id, patch: { freeContinueClicked: true } }, 1);
   w.navigate(1, 'https://www.autoscout24.de/account/listings');
   assert.equal((await w.send({ type: 'GET_RUN' })).run.status, 'submitted');
+});
+
+test('worker starts Kleinanzeigen, restricts updates to that provider, and does not allow duplicate final submission', async () => {
+  const w = worker('https://www.kleinanzeigen.de/');
+  const { run } = await w.send({ type: 'START', tabId: 1, platform: 'kleinanzeigen' });
+  assert.equal(run.platform, 'kleinanzeigen');
+  assert.equal((await w.send({ type: 'GET_RUN_FOR_TAB' }, 1, 'https://www.autoscout24.de/')).mine, false);
+  assert.equal((await w.send({ type: 'UPDATE', id: run.id, patch: { step: 2 } }, 1, 'https://www.autoscout24.de/')).accepted, false);
+  await w.send({ type: 'UPDATE', id: run.id, patch: { formSubmitted: true, publishClicked: true } }, 1);
+  w.navigate(1, 'https://www.kleinanzeigen.de/m-meine-anzeigen.html');
+  const result = (await w.send({ type: 'GET_RUN' })).run;
+  assert.equal(result.step, 3);
+  assert.equal(result.status, 'submitted');
+  assert.equal(result.formSubmitted, true);
+  assert.match((await w.send({ type: 'RESUME' })).error, /bereits angeklickt/);
 });
 
 test('after document reload the final package page clicks only Kostenlos weiter with its checkpoint stored first', async () => {
@@ -572,7 +589,8 @@ test(`complete details workflow ${stackedWithoutButtons ? 'without section butto
     document.body.append(result);
   };
   await a.details(p.fromHTML(template), run, async patch => Object.assign(run, patch));
-  assert.equal(visited.length, 10);
+  assert.equal(new Set(visited).size, 10);
+  assert.deepEqual(visited.slice(-3), ['sidebar-item-description', 'sidebar-item-contact', 'sidebar-item-description']);
   assert.equal(run.completed.length, 10);
   assert.equal(run.images, 'uploaded');
   assert.equal(run.status, 'done');
@@ -615,6 +633,133 @@ test('invalid source-matching vehicle field reports the German label and is not 
     return true;
   });
   assert.equal(run.completed.length, 0);
+  assert.equal(run.publishClicked, false);
+  d.window.close();
+});
+
+function enableRichPaste(d, handler) {
+  d.window.DataTransfer = class {
+    constructor() { this.values = new Map(); }
+    setData(type, value) { this.values.set(type, value); }
+    getData(type) { return this.values.get(type) || ''; }
+  };
+  d.window.ClipboardEvent = class extends d.window.Event {
+    constructor(type, options) { super(type, options); this.clipboardData = options.clipboardData; }
+  };
+  d.window.document.querySelector('#description').addEventListener('paste', handler);
+}
+const allDetailSections = ['vehicle-data', 'characteristics', 'condition', 'equipment', 'motor', 'fuel', 'photos', 'description', 'financing-offer', 'contact'];
+
+test('AutoScout24 rich paste repairs an empty checkpointed description and survives a new editor instance before publication', async () => {
+  const d = dom(template);
+  const { document, FiestaAutomation: a, FiestaProfile: p } = d.window;
+  const profile = p.fromHTML(template);
+  document.querySelector('#description').innerHTML = '<p><br></p>';
+  let savedHTML = '';
+  let pasteCount = 0;
+  enableRichPaste(d, event => {
+    event.preventDefault();
+    savedHTML = event.clipboardData.getData('text/html');
+    assert.equal(savedHTML, profile.descriptionHTML, 'paste the exact HTML from the saved source');
+    pasteCount++;
+    document.querySelector('#description').innerHTML = savedHTML;
+  });
+  document.execCommand = () => { throw new Error('The editor paste handler should handle rich input'); };
+  document.querySelector('[data-testid="sidebar-item-contact"]').onclick = () => {
+    const editor = document.querySelector('#description');
+    const replacement = editor.cloneNode(false);
+    replacement.innerHTML = savedHTML;
+    editor.replaceWith(replacement);
+  };
+  const run = { completed: [...allDetailSections], images: 'uploaded', publishClicked: false };
+  let publishes = 0;
+  document.querySelector('[data-testid="publish-button"]').onclick = () => {
+    assert.equal(a.descriptionMatches(profile), true);
+    assert.equal(document.querySelector('#description').innerHTML, profile.descriptionHTML);
+    assert.ok(document.querySelector('#description strong'));
+    assert.ok(document.querySelector('#description ul li'));
+    assert.ok(document.querySelector('#description hr'));
+    assert.ok(document.querySelector('#description').textContent.includes('Kleines Loch im Beifahrersitz'));
+    publishes++;
+    document.body.insertAdjacentHTML('beforeend', '<h1>Inserat erfolgreich veröffentlicht</h1>');
+  };
+  await a.details(profile, run, async patch => Object.assign(run, patch));
+  assert.equal(pasteCount, 1);
+  assert.equal(publishes, 1);
+  assert.equal(run.status, 'done');
+  d.window.close();
+});
+
+test('description verification repairs a plain-text-only copy even when all wording is already present', async () => {
+  const d = dom(template);
+  const { document, FiestaAutomation: a, FiestaProfile: p } = d.window;
+  const profile = p.fromHTML(template);
+  const editor = document.querySelector('#description');
+  const expected = new d.window.DOMParser().parseFromString(profile.descriptionHTML, 'text/html');
+  editor.textContent = expected.body.textContent;
+  assert.equal(a.descriptionMatches(profile), false, 'correct wording is not enough without rich formatting');
+  enableRichPaste(d, event => { event.preventDefault(); editor.innerHTML = event.clipboardData.getData('text/html'); });
+  await a.description(profile);
+  assert.equal(a.descriptionMatches(profile), true);
+  assert.equal(editor.innerHTML, profile.descriptionHTML);
+  d.window.close();
+});
+
+test('a detached editor with correct HTML is never mistaken for successful insertion into the current editor', async () => {
+  const d = dom(template);
+  const { document, FiestaAutomation: a, FiestaProfile: p } = d.window;
+  const profile = p.fromHTML(template);
+  const oldEditor = document.querySelector('#description');
+  oldEditor.innerHTML = '<p></p>';
+  enableRichPaste(d, event => {
+    oldEditor.innerHTML = event.clipboardData.getData('text/html');
+    const replacement = oldEditor.cloneNode(false);
+    replacement.innerHTML = '<p></p>';
+    oldEditor.replaceWith(replacement);
+  });
+  document.execCommand = () => false;
+  await assert.rejects(a.description(profile), /Editor hat die Beschreibung nicht übernommen/);
+  assert.equal(oldEditor.isConnected, false);
+  assert.equal(a.descriptionMatches(profile), false);
+  d.window.close();
+});
+
+test('native rich HTML insertion is used when a clipboard paste handler is unavailable', async () => {
+  const d = dom(template);
+  const { document, FiestaAutomation: a, FiestaProfile: p } = d.window;
+  const profile = p.fromHTML(template);
+  document.querySelector('#description').innerHTML = '<p></p>';
+  let inserted = false;
+  document.execCommand = (command, ui, html) => {
+    assert.equal(command, 'insertHTML', 'never replace the HTML with plain text');
+    assert.equal(html, profile.descriptionHTML);
+    document.querySelector('#description').innerHTML = html;
+    inserted = true;
+    return true;
+  };
+  await a.description(profile);
+  assert.equal(inserted, true);
+  assert.equal(a.descriptionMatches(profile), true);
+  d.window.close();
+});
+
+test('publication is blocked if the editor loses the full rich description when changing sections', async () => {
+  const d = dom(template);
+  const { document, FiestaAutomation: a, FiestaProfile: p } = d.window;
+  const profile = p.fromHTML(template);
+  document.querySelector('#description').innerHTML = '<p></p>';
+  enableRichPaste(d, event => { document.querySelector('#description').innerHTML = event.clipboardData.getData('text/html'); });
+  document.querySelector('[data-testid="sidebar-item-contact"]').onclick = () => {
+    const editor = document.querySelector('#description');
+    const replacement = editor.cloneNode(false);
+    replacement.innerHTML = '<p></p>';
+    editor.replaceWith(replacement);
+  };
+  const run = { completed: [...allDetailSections], images: 'uploaded', publishClicked: false };
+  let publishes = 0;
+  document.querySelector('[data-testid="publish-button"]').onclick = () => publishes++;
+  await assert.rejects(a.details(profile, run, async patch => Object.assign(run, patch)), /beim Abschnittswechsel nicht gespeichert/);
+  assert.equal(publishes, 0);
   assert.equal(run.publishClicked, false);
   d.window.close();
 });

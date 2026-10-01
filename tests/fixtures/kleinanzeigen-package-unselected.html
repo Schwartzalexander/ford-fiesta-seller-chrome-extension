@@ -1,0 +1,23 @@
+<!-- Relevant structure from the newer BundleSelection.DRXeIX-l component. -->
+<main>
+  <astro-island component-export="BundleSelection" client="load" await-children>
+    <p>Wähle nun dein Paket aus und veröffentliche deine Anzeige.</p>
+    <div role="radiogroup">
+      <div id="basic-card">
+        <div>
+          <button type="button" role="radio" aria-checked="false"><span></span><span>Basis Paket</span></button>
+          <p>Kostenlos inserieren – ohne zusätzliche Vorteile.</p>
+          <span>Kostenlos</span>
+        </div>
+      </div>
+      <div id="plus-card">
+        <div>
+          <button type="button" role="radio" aria-checked="false"><span></span><span>Plus Paket</span></button>
+          <p>Mehr Aufmerksamkeit &amp; unbegrenzte Anzeigendauer.</p>
+          <span>11,99 €</span>
+        </div>
+      </div>
+    </div>
+    <div><button type="button">Zurück</button><button id="package-submit" type="button" aria-disabled="true">Weiter</button></div>
+  </astro-island>
+</main>

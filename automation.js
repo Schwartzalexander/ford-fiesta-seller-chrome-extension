@@ -393,22 +393,83 @@
       throw new Error(`AutoScout24 meldet einen ungültigen Wert im Abschnitt „${name}“: ${norm(label)}. Bitte dieses Feld auf der Seite prüfen und anschließend „Fortsetzen“ wählen.`);
     }
   }
-  async function description(profile) {
-    const editor = await waitFor(() => find('#description[contenteditable="true"]'), "Beschreibung");
-    await check();
+  const descriptionEditor = () => find('#description[contenteditable="true"]');
+  const descriptionText = html => new DOMParser().parseFromString(html, "text/html").body.textContent;
+  const descriptionComparable = text => String(text || "").normalize("NFKC").replace(/\s+/g, "");
+  function descriptionMarkup(root) {
+    const walk = node => {
+      if (node.nodeType === Node.TEXT_NODE) return descriptionComparable(node.textContent);
+      if (node.nodeType !== Node.ELEMENT_NODE) return "";
+      const tag = ({ B: "STRONG", I: "EM" })[node.tagName] || node.tagName;
+      if (node.matches('br.ProseMirror-trailingBreak')) return "";
+      const content = [...node.childNodes].map(walk).join("");
+      // Empty spacing paragraphs and editor-generated attributes can differ
+      // after ProseMirror parses a paste. Content-bearing formatting must match.
+      if (["P", "DIV"].includes(tag) && !descriptionComparable(node.textContent)) return "";
+      if (!["P", "UL", "OL", "LI", "STRONG", "EM", "H1", "H2", "H3", "HR", "BR"].includes(tag)) return content;
+      return `<${tag}>${content}</${tag}>`;
+    };
+    return [...root.childNodes].map(walk).join("");
+  }
+  const descriptionMatches = profile => {
+    const editor = descriptionEditor();
+    const expected = new DOMParser().parseFromString(profile.descriptionHTML, "text/html").body;
+    return !!editor && descriptionComparable(editor.textContent) === descriptionComparable(expected.textContent) && descriptionMarkup(editor) === descriptionMarkup(expected);
+  };
+  function selectEditorContents(editor) {
     editor.focus();
     const range = document.createRange();
     range.selectNodeContents(editor);
     const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
-    if (!document.execCommand("insertHTML", false, profile.descriptionHTML)) {
-      throw new Error("Die Beschreibung konnte nicht in den Texteditor übernommen werden.");
+  }
+  async function description(profile) {
+    if (typeof profile.descriptionHTML !== "string" || !descriptionComparable(descriptionText(profile.descriptionHTML))) throw new Error("Die Beschreibungsvorlage ist leer. Bitte den vollständigen Text ergänzen.");
+    let editor = await waitFor(descriptionEditor, "AutoScout24-Beschreibungseditor");
+    await check();
+    if (descriptionMatches(profile)) return;
+    selectEditorContents(editor);
+    // ProseMirror/Tiptap handles paste by dispatching an editor transaction.
+    // A synthetic input event alone does not update the editor/form state.
+    if (typeof DataTransfer === "function" && typeof ClipboardEvent === "function") {
+      const clipboard = new DataTransfer();
+      clipboard.setData("text/html", profile.descriptionHTML);
+      clipboard.setData("text/plain", descriptionText(profile.descriptionHTML));
+      editor.dispatchEvent(new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true, cancelable: true }));
+      await sleep(300);
     }
-    editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertFromPaste" }));
-    editor.blur();
-    const expected = new DOMParser().parseFromString(profile.descriptionHTML, "text/html").body.textContent;
-    await waitFor(() => norm(editor.textContent) === norm(expected), "Vollständige Beschreibung", 4000);
+    if (!descriptionMatches(profile)) {
+      await check();
+      editor = await waitFor(descriptionEditor, "AutoScout24-Beschreibungseditor nach Neurendern");
+      selectEditorContents(editor);
+      if (typeof document.execCommand !== "function" || !document.execCommand("insertHTML", false, profile.descriptionHTML)) {
+        throw new Error("Der AutoScout24-Editor hat die Beschreibung nicht übernommen. Bitte den vollständigen Text im Abschnitt „Beschreibung“ einfügen und anschließend „Fortsetzen“ wählen.");
+      }
+      editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertFromPaste" }));
+    }
+    descriptionEditor()?.blur();
+    // Never verify a captured node: React can replace it with an empty editor.
+    await waitFor(() => descriptionMatches(profile), "Vollständige Beschreibung im aktuellen AutoScout24-Editor", 4000);
+    await sleep(300);
+    await check();
+    if (!descriptionMatches(profile)) throw new Error("Die Beschreibung wurde beim Neurendern des AutoScout24-Editors wieder entfernt. Bitte den Text auf der Seite prüfen und fortsetzen.");
+  }
+  async function verifyDescriptionBeforePublish(profile, update) {
+    const sidebar = '[data-testid="sidebar-item-description"]';
+    await update({ message: "Beschreibung vor Veröffentlichung vollständig prüfen …" });
+    await click(await waitFor(() => find(sidebar), "Abschnitt „Beschreibung“"));
+    await description(profile);
+    // Changing sections flushes form/editor updates and exposes values that
+    // looked correct only in the old DOM. Always check, even with a checkpoint.
+    await click(await waitFor(() => find('[data-testid="sidebar-item-contact"]'), "Abschnitt „Kontakt“ für Speicherprüfung"));
+    await sleep(300);
+    await click(await waitFor(() => find(sidebar), "Abschnitt „Beschreibung“ für Speicherprüfung"));
+    await waitFor(descriptionEditor, "Gespeicherte Beschreibung");
+    if (!descriptionMatches(profile)) {
+      throw new Error("AutoScout24 hat die Beschreibung beim Abschnittswechsel nicht gespeichert. Bitte den vollständigen Text im Abschnitt „Beschreibung“ einfügen und anschließend „Fortsetzen“ wählen. Es wurde noch nicht veröffentlicht.");
+    }
+    await update({ message: "Vollständige Beschreibung einschließlich bekannter Mängel übernommen und geprüft." });
   }
 
   async function details(profile, run, update) {
@@ -447,6 +508,7 @@
       run.completed = [...run.completed, section];
       await update({ completed: run.completed });
     }
+    await verifyDescriptionBeforePublish(profile, update);
     const invalidBeforePublish = [...document.querySelectorAll('[aria-invalid="true"]')].find(visible);
     if (invalidBeforePublish) throw new Error(`AutoScout24 meldet noch einen ungültigen Formularwert (${invalidBeforePublish.getAttribute("aria-label") || invalidBeforePublish.id || invalidBeforePublish.getAttribute("aria-labelledby")}). Bitte das Feld prüfen und anschließend „Fortsetzen“ wählen.`);
     const publish = await waitFor(() => {
@@ -470,8 +532,8 @@
     }
   }
   globalThis.FiestaAutomation = {
-    norm, visible, find, waitFor, click, setValue, combo, stage, marketplaceLink, freeContinueButton, publicationSuccess, fields,
-    initialVehicle, upload, waitForImageUploads, imageCards, imageLoading, finishFree, details, contactFields, priceFields, datePicker,
+    norm, visible, find, waitFor, click, nativeValue, assertActive: () => check(), setValue, combo, stage, marketplaceLink, freeContinueButton, publicationSuccess, fields,
+    initialVehicle, upload, waitForImageUploads, imageCards, imageLoading, finishFree, description, descriptionMatches, verifyDescriptionBeforePublish, details, contactFields, priceFields, datePicker,
     setCheck: callback => { check = callback; }
   };
 })();

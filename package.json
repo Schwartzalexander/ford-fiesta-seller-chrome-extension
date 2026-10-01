@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check background.js && node --check popup.js && node --check profile.js && node --check automation.js && node --check content.js && node --check sponsored.js"
+    "check": "node --check platforms.js && node --check background.js && node --check popup.js && node --check profile.js && node --check automation.js && node --check content.js && node --check sponsored.js && node --check kleinanzeigen.js && node --check kleinanzeigen-content.js"
   },
   "devDependencies": { "jsdom": "^26.1.0" }
 }

@@ -1,50 +1,29 @@
-Bitte erstelle mir eine Chrome Extension, die dazu dient mein Auto bei Autoscout24 und später noch auf anderen plattformen zu verkaufen. Beginnen wir aber mit Autoscout24.
-
-Die extension braucht ein icon und ein popup menü, über das sie gesteuert werden kann. Darin soll, wenn man sich auf autoscout24.de befindet der entsprechende button auftauchen, mit dem inseriert werden kann.
-
-Dokumentiere die einzelnen schritte in einer spec-autoscout24.md, damit du daraus die extension theoretisch nachbauen könntest oder bei bedarf auch einen playwright test daraus bauen könntest.
+Erweitere jetzt die Extension so, dass sie auch auf kleinanzeigen inserieren kann.
+Erstelle zusätzlich auch wieder eine spec: spec-kleinanzeigen.md
 
 
 Schritt 0:
 Navigiere auf diese Seite:
-Url: https://www.autoscout24.de/auto-verkaufen/
-Zugehöriger DOM: autoscout24.de_sell_car_form_page_0.html
-Klicke auf Inserat erstellen
+Url: https://www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html
+Zugehöriger DOM: kleinanzeigen.de_sell_car_form_page_0.html
+Füge Bilder ein.
+Füge den Titel ein.
 
-Schritt 1: 
-Url: https://www.autoscout24.de/manual-listing-creation/private/vehicle-listing/?vehicleType=C&ref=mini-forms&event_source=navigation_bar_sell_cta
-zugehöriger DOM: autoscout24.de_sell_car_form_page_1.html
-Details eintragen gem. autoscout24-form-filled.html
-Dann auf Weiter klicken.
+Schritt 1: Kategorie
+Die Kategorieauswahl wird eingeblendet
+zugehöriger DOM: kleinanzeigen.de_sell_car_form_kategorie.html
+Wähle Auto, Rad & Boot ? Autos ? Ford ? Fiesta
 
-Schritt 2: Kontaktdaten
-Url: https://www.autoscout24.de/manual-listing-creation/private/mini-forms/
-zugehöriger DOM: autoscout24.de_sell_car_form_page_2.html
-Kontaktdaten eintragen :
-Postleitzahl: 81925 München
-Ländervorwahl: +49
-Rufnummer: 01715432107
-Als Kontaktmöglichkeit dem Inserat hinzufügen?: Ja
-Dann Klick auf Button Weiter 
+Schritt 2: Weitere Daten
+Weitere Formularfelder erscheinen
+zugehöriger DOM: kleinanzeigen.de_sell_car_form_page_1.html
+Trage alles ein. Die Informationen identisch wie bei autoscout24. Wenn etwas fehlt, frage nach.
+Dann Klick auf Button "Nächster Schritt" 
 
-Schritt 3: Verkaufspreis und Zustand
-Url: https://www.autoscout24.de/manual-listing-creation/private/mini-forms/
-zugehöriger DOM: autoscout24.de_sell_car_form_page_3.html
-Daten eintragen gem. autoscout24-form-filled.html
-Dann Klick auf Button Weiter
-
-
-Schritt 4: Fahrzeugbilder
-Url: https://www.autoscout24.de/manual-listing-creation/private/mini-forms/
-zugehöriger DOM: autoscout24.de_sell_car_form_page_3.html
-Bilder aud dem Ordner Bilder innerhalb der Extension hochladen, falls möglich, und Weiter klicken. Sonst Ohne Bilder fortfahren
-Dann Klick auf Button Weiter
-
-
-Schritt 5: Details
-Url: https://www.autoscout24.de/manual-listing-creation/private/vehicle-listing/
-zugehöriger DOM: autoscout24.de_sell_car_form_page_5.html
-Daten eintragen gem. autoscout24-form-filled.html
-Dann auf Button "Veröffentlichen" klicken
+Schritt 3: Basis Paket wählen
+Url: https://www.kleinanzeigen.de/p-anzeigentypauswahl/216/3528024491/01a0f705-0ecf-72c5-80bc-2405cab40696 (oder so ähnlich)
+zugehöriger DOM: kleinanzeigen.de_sell_car_form_page_2.html
+Basis Paket wählen
+Dann Klick auf Anzeige aufgaben
 
 Wenn möglich, sollen alle Schritte voll automatisch durchlaufen.

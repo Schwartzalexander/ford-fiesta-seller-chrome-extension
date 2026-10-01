@@ -44,4 +44,8 @@ class Inspector(HTMLParser):
 files = [Path(arg.split('=', 1)[1]) for arg in sys.argv if arg.startswith('--file=')]
 for path in files or sorted(Path('.').glob('*.html')):
     print('\nFILE:', path.name)
-    Inspector().feed(path.read_text(encoding='utf-8'))
+    try:
+        html = path.read_text(encoding='utf-8')
+    except UnicodeDecodeError:
+        html = path.read_text(encoding='cp1252')
+    Inspector().feed(html)
