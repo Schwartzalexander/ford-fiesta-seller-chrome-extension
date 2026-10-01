@@ -26,7 +26,8 @@ HTML-Vorlage und der Ordner `Bilder/` müssen im Extension-Ordner bleiben.
 5. Bei einer Unterbrechung die angegebene Stelle auf der Seite bearbeiten und
    **Fortsetzen** wählen. **Stoppen** unterbricht weitere automatische Aktionen.
 
-Die Vorlage enthält 15.200 €, 32.500 km und die Kontaktnummer 01715432107. Alle
+Der aktuelle Inseratpreis beträgt **14.500 €** und ist in `profile.js` hinterlegt.
+Die Vorlage enthält 32.500 km und die Kontaktnummer 01715432107. Die übrigen
 Fahrzeug- und Ausstattungswerte einschließlich der formatierten Beschreibung
 werden direkt aus dieser Vorlage gelesen. Die Bilder stammen aus `Bilder/`;
 `Mängel.jpg` wird zuletzt übergeben. Scheitert der Upload vollständig, wird ohne

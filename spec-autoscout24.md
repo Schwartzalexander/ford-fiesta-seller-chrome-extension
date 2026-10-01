@@ -46,8 +46,12 @@ erzeugt diesen Link aus den gerade gewählten Fahrzeugdaten. Sein `href` bleibt
 deshalb erhalten; ausschließlich `target` wird auf `_self` gesetzt. Der gespeicherte
 Snapshot dient als DOM-Vorlage, seine Beispielparameter werden nicht übernommen.
 
-Auch der Preis 15.000 € in page_3 ist ein Beispielwert. Maßgeblich sind 15.200 €
-aus der ausgefüllten Vorlage. Die Vorlage wird unverändert gelesen; auch deren
+Auch der Preis 15.000 € in page_3 und der ursprünglich erfasste Preis 15.200 €
+in der ausgefüllten Vorlage sind nicht der aktuelle Inseratpreis. Auf Nutzerwunsch
+gilt **14.500 €**, zentral als `listingPrice` in `profile.js` konfiguriert. Beim
+Parsen wird das Preisfeld im inerten DOM vor der Profilbildung auf diesen Wert
+gesetzt; beide Preisformulare verwenden somit 14.500 €. Die Originalaufnahme
+bleibt als Snapshot erhalten. Die übrigen Vorlagenwerte einschließlich der
 Modellvariante „Fiesta 1.0 EcoBoost S“, Beschreibung „Vignale“, Leistung
 101 PS in den Formularfeldern beziehungsweise 100 PS im Beschreibungstext sowie
 die Anzahl von 5 Gängen werden so übernommen, wie sie dort gespeichert sind.
@@ -103,8 +107,9 @@ Aus der Vorlage alle `input` und `button[role=combobox]` auslesen:
 8. Erstzulassung aus `[data-testid="registrationDate-datePicker"] button`,
    nächste HU/AU aus dem zweiten DatePicker-Hauptbutton der Vorlage lesen.
 
-Die HTML-Datei ist somit die einzige Datenquelle für Fahrzeug, Equipment und
-Beschreibung; die Extension benötigt keine zweite manuell gepflegte Datenkopie.
+Die HTML-Datei ist die Datenquelle für Fahrzeug, Equipment und Beschreibung.
+Ausnahme ist der aktuelle Inseratpreis: `listingPrice` aus `profile.js` ersetzt
+vor der Extraktion den aufgenommenen Wert von `#price` im geparsten DOM.
 
 ## 4. Gemeinsame Interaktionsregeln
 
@@ -261,7 +266,7 @@ gilt später für den Detailabschnitt Kontakt.
 
 | Selektor | Wert |
 | --- | --- |
-| `#price` | 15.200 |
+| `#price` | 14.500 |
 | `#mileage` | 32.500 |
 | `#priceNegotiable` | Nicht markiert |
 | `#taxDeductible` | Nicht markiert |
@@ -370,7 +375,7 @@ Für Comboboxen gelten unten die `aria-labelledby`-Werte (mit
 | `fuel` | `fuelCategory` Benzin; `#environmentalProtocol-nedc` markieren; `primaryFuelType` Super E10 95; `#fuelConsumptionCombined` 5,6; `#co2` 128; `efficiencyClass` B; `pollutionClass` Euro 6d-TEMP; `#emissionSticker__4` Grün | `fuel-continue-button` |
 | `photos` | Neun Bilder gemäß Schritt 4; bereits erledigten Upload nicht wiederholen | `image-continue-button` |
 | `description` | Vollständiges HTML aus `#description` der Vorlage | `description-continue-button` |
-| `financing-offer` | `#price` 15.200; `#priceNegotiable` false; `#taxDeductible` false | `financingOffer-continue-button` |
+| `financing-offer` | `#price` 14.500; `#priceNegotiable` false; `#taxDeductible` false | `financingOffer-continue-button` |
 | `contact` | Vier Kontaktfelder gemäß Schritt 2 | Kein eigener Weiter-Button; anschließend Veröffentlichen |
 
 ### Vollständige Ausstattung
@@ -559,7 +564,7 @@ Website und den nativen Bearbeitungsbefehl; dies ist kein Live-End-to-End-Test.
    Den Klick auf „Inserat erstellen“ prüfen; „Termin vereinbaren“ darf nicht
    angeklickt werden. Erst dieser Klick liefert den Kontaktdaten-DOM.
    Schritte 2/3: bei Weiter den nächsten DOM im selben Tab rendern. Auf
-   81925 München, +49, Rufnummer, `hidePhoneNumber=false`, 15.200 €, 32.500 km,
+   81925 München, +49, Rufnummer, `hidePhoneNumber=false`, 14.500 €, 32.500 km,
    einen Halter und beide Zustandscheckboxen prüfen.
 7. Schritt 4: `input.files` muss neun JPEGs in definierter Reihenfolge enthalten.
    Für erfolgreiche Uploads neun Vorschaukarten simulieren. Zunächst eine davon

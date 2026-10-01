@@ -37,7 +37,7 @@ test('profile faithfully reads source values, all equipment states and complete 
   assert.equal(p.model, 'Fiesta');
   assert.equal(p.registration, '06.2020');
   assert.equal(p.inspection, '07.2027');
-  assert.equal(p.fields.find(f => f.selector.includes('"price"')).value, '15.200');
+  assert.equal(p.fields.find(f => f.selector.includes('"price"')).value, '14.500');
   const source = new JSDOM(template).window.document;
   assert.equal(p.fields.filter(f => f.equipment).length, source.querySelectorAll('input[id*="-equipments-"]').length);
   assert.equal(p.descriptionHTML, source.querySelector('#description').innerHTML);
@@ -74,7 +74,7 @@ test('contact and price steps apply source values and dispatch site input events
       assert.equal(d.window.document.querySelector('#contactFieldPhoneNumberFull').value, '01715432107');
       assert.equal(d.window.document.querySelector('#hidePhoneNumber__false').checked, true);
     } else {
-      assert.equal(d.window.document.querySelector('#price').value, '15.200');
+      assert.equal(d.window.document.querySelector('#price').value, '14.500');
       assert.equal(d.window.document.querySelector('#nonSmoking').checked, true);
       assert.ok(inputEvents > 0);
     }

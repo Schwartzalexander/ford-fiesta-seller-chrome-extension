@@ -1,8 +1,11 @@
-/* The inert saved HTML is the single source of truth for all vehicle fields. */
+/* Vehicle data comes from the inert saved HTML; the current asking price is configured here. */
 (() => {
+  const listingPrice = "14.500";
   const images = ["Ford Fiesta.jpg", "Front.jpg", "Heck.jpg", "hinten rechts.jpg", "links.jpg", "rechts.jpg", "Vorne rechts.jpg", "Specs.jpg", "Mängel.jpg"];
   function fromHTML(html) {
     const doc = new DOMParser().parseFromString(html, "text/html");
+    const priceInput = doc.querySelector("#price");
+    if (priceInput) priceInput.value = listingPrice;
     const fields = [];
     for (const el of doc.querySelectorAll("input, button[role=combobox]")) {
       if (el.matches("input[type=hidden], input[type=file]") || el.id.startsWith("exb")) continue;
