@@ -23,7 +23,7 @@ class Inspector(HTMLParser):
             print('SPECIAL', tag, json.dumps(attrs, ensure_ascii=False))
         if 'contenteditable' in attrs:
             self.capture = [tag, attrs, '']
-        if tag in ('input', 'select', 'textarea', 'button', 'label', 'option', 'h1', 'h2'):
+        if tag in ('input', 'select', 'textarea', 'button', 'label', 'option', 'h1', 'h2', 'a'):
             if tag == 'input':
                 print(tag, json.dumps(attrs, ensure_ascii=False))
             else:
@@ -41,6 +41,7 @@ class Inspector(HTMLParser):
             self.capture = None
 
 
-for path in sorted(Path('.').glob('*.html')):
+files = [Path(arg.split('=', 1)[1]) for arg in sys.argv if arg.startswith('--file=')]
+for path in files or sorted(Path('.').glob('*.html')):
     print('\nFILE:', path.name)
     Inspector().feed(path.read_text(encoding='utf-8'))

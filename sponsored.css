@@ -1,0 +1,6 @@
+/* CSS also handles cards added or changed by SPA navigation / lazy loading. */
+html:not([data-fiesta-hide-sponsored="false"]) article[data-relevance_adjustment="sponsored"],
+html:not([data-fiesta-hide-sponsored="false"]) article[data-relevance-adjustment="sponsored"],
+html:not([data-fiesta-hide-sponsored="false"]) article[data-testid="list-item"]:has([class*="ListItemSponsored_"]) {
+  display: none !important;
+}

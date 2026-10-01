@@ -22,29 +22,51 @@
       if (!reply.accepted) throw new DOMException("Ablauf gestoppt", "AbortError");
       Object.assign(run, reply.run);
     };
-    if (run.publishClicked) {
-      await update({ status: "submitted", message: "Veröffentlichen wurde angeklickt. Bitte das Ergebnis auf AutoScout24 prüfen." });
+    if (run.freeContinueClicked) {
+      await update({ status: "submitted", step: 6, message: "Kostenlos weiter wurde bereits angeklickt. Bitte das Inserat unter „Meine Inserate“ prüfen." });
       return;
     }
     const cookie = A.find('[data-testid="as24-cmp-decline-all-button"]');
     if (cookie) await A.click(cookie);
+    if (run.publishClicked) {
+      // Publication is checkpointed across navigations, but the free package
+      // choice is a separate step. Never re-enter/re-publish the detail form.
+      const result = await A.waitFor(() => A.freeContinueButton() || A.publicationSuccess() || (location.pathname.replace(/\/$/, "") === "/account/listings" && "listings"), "Paket-Auswahl mit „Kostenlos weiter“ nach Veröffentlichung", 30000);
+      if (A.freeContinueButton()) await A.finishFree(run, update);
+      else await update({ status: result === "listings" ? "submitted" : "done", step: 6,
+        message: result === "listings" ? "„Meine Inserate“ ist geöffnet. Bitte das Veröffentlichungsergebnis dort prüfen." : "AutoScout24 bestätigt die Veröffentlichung." });
+      return;
+    }
     const stage = await A.waitFor(() => A.stage(), "AutoScout24-Formular (gegebenenfalls anmelden oder Dialog schließen)", 30000);
+    if (stage === "packages") {
+      await update({ step: 6, publishClicked: true, message: "Paket-Auswahl: kostenlos abschließen …" });
+      await A.finishFree(run, update);
+      return;
+    }
     if (!cachedProfile) cachedProfile = FiestaProfile.fromHTML((await message({ type: "GET_TEMPLATE" })).html);
     const profile = cachedProfile;
     if (stage === "sell") {
-      await update({ step: 0, message: "Inserat erstellen …" });
-      const link = await A.waitFor(() => A.find("#market-place-link") || [...document.querySelectorAll("a, button")].find(el => A.visible(el) && A.norm(el.textContent) === "Inserat erstellen"), "Inserat erstellen");
-      // The saved start-page link contains unrelated sample vehicle data and
-      // opens a new tab. Use the requested entry route in the controlled tab.
-      if (link instanceof HTMLAnchorElement) { link.href = ENTRY; link.target = "_self"; }
       await update({ step: 1, message: "Fahrzeugauswahl wird geöffnet …" });
+      await A.waitFor(() => A.stage() !== "sell", "Fahrzeugauswahl oder Verkaufsoptionen", 5000).catch(error => {
+        if (error.name === "AbortError") throw error;
+        location.assign(ENTRY);
+      });
+      return;
+    }
+    if (stage === "marketplace") {
+      await update({ step: run.step > 0 ? 1 : 0, message: "Verkaufsoptionen: Inserat erstellen …" });
+      const link = await A.waitFor(() => A.marketplaceLink(), "Inserat erstellen (AutoScout24-Marktplatz)");
+      // Keep AutoScout's freshly generated URL, including selected vehicle
+      // parameters. Only prevent its target=_blank from leaving the run tab.
+      if (link instanceof HTMLAnchorElement) link.target = "_self";
       await A.click(link);
+      await A.waitFor(() => ["contact", "details", "vehicle"].includes(A.stage()), "Kontaktdaten nach „Inserat erstellen“", 30000);
       return;
     }
     if (stage === "vehicle") {
       await update({ step: 1, message: "Fahrzeugdaten ausfüllen …" });
       await A.initialVehicle(profile);
-      await A.waitFor(() => ["contact", "details"].includes(A.stage()), "Kontaktdaten oder Detailformular", 30000);
+      await A.waitFor(() => ["marketplace", "contact", "details"].includes(A.stage()), "Verkaufsoptionen, Kontaktdaten oder Detailformular", 30000);
       return;
     }
     if (stage === "contact" || stage === "price") {

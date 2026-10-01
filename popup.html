@@ -6,10 +6,16 @@
   <main>
     <section class="vehicle"><strong>Ford Fiesta 1.0 EcoBoost S</strong><p>06/2020 · 32.500 km · Automatik</p><b>15.200 €</b><span>9 Fahrzeugbilder</span></section>
     <p id="hint">Aktueller Tab wird geprüft …</p>
+    <button id="open-platform" hidden>AutoScout24.de öffnen, um dein Auto zu inserieren</button>
     <button id="start" hidden>Auf AutoScout24 inserieren</button>
-    <p class="note">Der Ablauf füllt die Vorlage aus, lädt die Bilder hoch und klickt abschließend auf „Veröffentlichen“.</p>
-    <section id="progress" hidden aria-live="polite"><h2 id="step">Status</h2><p id="status"></p><progress id="bar" max="6" value="0"></progress></section>
+    <p class="note">Der Ablauf füllt die Vorlage aus, wartet auf die Bild-Uploads und klickt auf „Veröffentlichen“ sowie anschließend „Kostenlos weiter“.</p>
+    <section id="progress" hidden aria-live="polite"><h2 id="step">Status</h2><p id="status"></p><progress id="bar" max="7" value="0"></progress></section>
     <div class="controls"><button id="resume" class="secondary" hidden>Fortsetzen</button><button id="stop" class="secondary" hidden>Stoppen</button></div>
+    <section class="settings" aria-labelledby="settings-title">
+      <h2 id="settings-title">AutoScout24-Einstellungen</h2>
+      <label class="setting"><input id="hide-sponsored" type="checkbox" checked disabled aria-describedby="sponsored-hint"><span>Gesponserte Inhalte ausblenden</span></label>
+      <p id="sponsored-hint" class="note">Gilt für alle AutoScout24-Tabs, auch für nachgeladene Angebote.</p>
+    </section>
     <p id="error" role="alert"></p>
   </main>
   <script src="popup.js"></script>

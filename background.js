@@ -33,7 +33,7 @@ async function handle(message, sender) {
     const next = {
       id: crypto.randomUUID(), tabId: tab.id, status: "running", step: 0,
       message: "Startseite wird geöffnet …", completed: [], images: "pending",
-      publishClicked: false, updatedAt: Date.now()
+      publishClicked: false, freeContinueClicked: false, updatedAt: Date.now()
     };
     await chrome.storage.local.set({ [KEY]: next });
     try { await chrome.tabs.update(tab.id, { url: SELL_URL }); }
@@ -46,7 +46,7 @@ async function handle(message, sender) {
   if (["STOP", "RESUME"].includes(message.type)) {
     if (!run) throw new Error("Kein Ablauf vorhanden.");
     if (message.type === "RESUME") {
-      if (run.publishClicked) throw new Error("Veröffentlichen wurde bereits angeklickt. Ergebnis bitte auf der Seite prüfen.");
+      if (run.freeContinueClicked) throw new Error("Kostenlos weiter wurde bereits angeklickt. Ergebnis bitte unter „Meine Inserate“ prüfen.");
       const tab = await chrome.tabs.get(run.tabId);
       if (!supported(tab.url)) throw new Error("Bitte im ursprünglichen Tab zu AutoScout24 zurückkehren.");
     }
@@ -57,7 +57,7 @@ async function handle(message, sender) {
   }
   if (message.type === "UPDATE") {
     if (!run || run.id !== message.id || sender.tab?.id !== run.tabId || run.status !== "running") return { accepted: false, run };
-    const allowed = ["status", "step", "message", "completed", "images", "publishClicked"];
+    const allowed = ["status", "step", "message", "completed", "images", "publishClicked", "freeContinueClicked"];
     const patch = Object.fromEntries(Object.entries(message.patch || {}).filter(([key]) => allowed.includes(key)));
     const next = { ...run, ...patch, updatedAt: Date.now() };
     await chrome.storage.local.set({ [KEY]: next });
@@ -80,7 +80,9 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
   queue = queue.then(async () => {
     const run = (await chrome.storage.local.get(KEY))[KEY];
     if (run?.tabId === tabId && run.status === "running" && run.publishClicked) {
-      await chrome.storage.local.set({ [KEY]: { ...run, status: "submitted", message: "Veröffentlichen wurde angeklickt und AutoScout24 hat weitergeleitet. Bitte das Ergebnis auf der Seite prüfen.", updatedAt: Date.now() } });
+      await chrome.storage.local.set({ [KEY]: { ...run, step: 6,
+        status: run.freeContinueClicked ? "submitted" : "running",
+        message: run.freeContinueClicked ? "Kostenlos weiter wurde angeklickt und AutoScout24 hat weitergeleitet. Bitte das Inserat unter „Meine Inserate“ prüfen." : "AutoScout24 hat weitergeleitet. Kostenlosen Abschluss prüfen …", updatedAt: Date.now() } });
     }
   }).catch(console.error);
 });
