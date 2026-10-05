@@ -66,11 +66,14 @@ Ein finaler Kleinanzeigen-Veröffentlichungsklick wird nach Reload nicht wiederh
 
 ## Dokumentation und Entwicklung
 
-### Gesponserte Angebote ausblenden
+### Gesponserte Angebote und LeasingMarkt.de ausblenden
 
 Im Popup gibt es die standardmäßig aktivierte Einstellung **Gesponserte Inhalte
-ausblenden**. Sie blendet gesponserte Angebotskarten auf AutoScout24.de aus, auch
-wenn diese nachgeladen werden. Die Einstellung bleibt gespeichert und gilt für
+und LeasingMarkt.de ausblenden**. Sie blendet gesponserte Angebotskarten und mit
+dem LeasingMarkt.de-Logo gekennzeichnete Angebote auf AutoScout24.de aus, auch
+wenn diese nachgeladen werden. Contentbanner-Container samt reserviertem Freiraum
+und leere Umfrage-Platzhalter werden ebenfalls ausgeblendet.
+Die Einstellung bleibt gespeichert und gilt für
 alle AutoScout24-Tabs. Beim Ausschalten werden die Angebote sofort wieder sichtbar.
 
 Die vollständige Ablauf-, Daten- und Selektorspezifikation steht in

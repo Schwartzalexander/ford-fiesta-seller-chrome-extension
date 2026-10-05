@@ -84,7 +84,12 @@ beide Kleinanzeigen-HTTPS-Hosts. `Bilder/*.jpg` ist für diese vier Hosts als
 `web_accessible_resources` freigegeben. Kleinanzeigen-Content-Scripts bei
 `document_idle`: `platforms.js`, `profile.js`, `automation.js`, `kleinanzeigen.js`,
 `kleinanzeigen-content.js`. Kein Build und keine npm-Pakete zur Laufzeit nötig.
-Der Sponsored-Filter wird ausschließlich auf AutoScout24 injiziert.
+Der Filter für gesponserte Inhalte und mit LeasingMarkt.de-Logo gekennzeichnete
+Angebote wird ausschließlich auf AutoScout24 injiziert. Er blendet dort auch
+Contentbanner-Container samt reservierter Mindesthöhe und den leeren
+Umfrage-Platzhalter aus. Diese Regeln werden gemeinsam
+über die standardmäßig aktivierte Popup-Einstellung **Gesponserte Inhalte und
+LeasingMarkt.de ausblenden** (`chrome.storage.local.hideSponsored`) gesteuert.
 
 ## 4. Allgemeine Interaktionsregeln
 

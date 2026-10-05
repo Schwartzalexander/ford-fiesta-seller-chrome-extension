@@ -666,9 +666,9 @@ ohne automatische Kontakt- oder Schadstoffklassenanhänge. Die Kleinanzeigen-Pr�
 toleriert dort entfernte dekorative Überschriftensymbole; AutoScout24 übernimmt
 weiterhin das vollständige originale HTML samt Formatierung.
 
-## 16. Zusatzfeature: Gesponserte Angebote ausblenden
+## 16. Zusatzfeature: Gesponserte Angebote und LeasingMarkt.de ausblenden
 
-Im Popup die Checkbox **Gesponserte Inhalte ausblenden** bereitstellen. Ohne
+Im Popup die Checkbox **Gesponserte Inhalte und LeasingMarkt.de ausblenden** bereitstellen. Ohne
 gespeicherten Wert ist sie aktiviert. Den booleschen Wert unter
 `chrome.storage.local.hideSponsored` speichern. Einstellungen gelten unabhängig
 vom Inseratablauf für alle AutoScout24-Tabs und werden über
@@ -688,18 +688,36 @@ Zu erkennende Angebotskarten:
 - `article[data-relevance-adjustment="sponsored"]` (alternative Attributschreibweise)
 - `article[data-testid="list-item"]:has([class*="ListItemSponsored_"])`
   (explizites Sponsored-Badge, unabhängig vom generierten CSS-Hash)
+- `article[data-testid="list-item"]:has([data-testid="logo-leasing-markt"])`
+  (LeasingMarkt.de-Logo aus dem gelieferten HTML-Beispiel; dessen Karte trägt
+  `data-relevance_adjustment="organic"` und wird trotzdem ausgeblendet)
 
-Bei aktivem Filter die gesamte Karte per `display: none !important` ausblenden.
+Zusätzliche Freiraum-Selektoren aus dem gelieferten Ergebnislisten-HTML:
+
+- `main [class*="AdContentBanner_adContentBannerMinHeight__"]:has(s24-ad-slot[id^="s24-osa-list-contentbanner_"])`
+  blendet den gesamten Contentbanner-Container samt reservierter Mindesthöhe aus,
+  für Größen s/m/l zwischen Angeboten und unterhalb der Seitennavigation.
+- `main [id="surveyplaceholder"]:empty` blendet den leeren Umfrage-Platzhalter
+  aus; sobald die Website ihn mit Inhalt befüllt, greift diese Regel nicht mehr.
+
+Bei aktivem Filter die gesamte Karte und diese Platzhalter per `display: none !important` ausblenden.
 Keine Karten entfernen und deren eigene Styles/Attribute nicht überschreiben.
 Beim Ausschalten die Filterregel über den HTML-Zustand unwirksam machen.
 CSS-Selektoren erfassen automatisch neu eingefügte und umgewidmete Karten;
 ein MutationObserver oder regelmäßiges Durchsuchen der Ergebnisliste ist nicht
 erforderlich. Organische Smyle-Angebote und Beschreibungen, die nur das Wort
-„gesponsert“ erwähnen, sind kein Ausblendkriterium.
+„gesponsert“ oder „LeasingMarkt.de“ erwähnen, sind kein Ausblendkriterium.
+Auch Leasing-Angebote ohne LeasingMarkt.de-Logo werden allein wegen ihrer
+Leasingrate oder des Hinweises „Leasing Angebot“ nicht ausgeblendet.
 
 Offline-Tests in `tests/sponsored.test.cjs`: Nutzerbeispiel und Badge-Erkennung,
-organische Ergebnisse, nachgeladene Angebote, reversible Deaktivierung,
+LeasingMarkt.de-Logo bei organischer Karte, gewöhnliche Leasing-Angebote und
+reine Textnennungen, organische Ergebnisse, Contentbanner-Container aller Größen
+einschließlich reservierter Mindesthöhe und Banner unter der Pagination,
+leerer/befüllter Umfrage-Platzhalter, nachgeladene Angebote, reversible Deaktivierung,
 gespeicherter Standard, konkurrierende Einstellungsänderung und Popup-Speicherung
-einschließlich Schreibfehler. Für einen Browser-Test eine neue gesponserte Karte
+einschließlich Schreibfehler. LeasingMarkt.de- und Freiraum-Erweiterungen wurden offline geprüft;
+eine Live-Browser-Prüfung steht aus. Für einen Browser-Test eine neue gesponserte Karte
+und eine Karte mit LeasingMarkt.de-Logo sowie einen Contentbanner-Container
 einfügen und ihre Unsichtbarkeit prüfen; danach über das Popup deaktivieren und
 in allen offenen AutoScout24-Tabs ihre Sichtbarkeit prüfen.

@@ -37,6 +37,70 @@ test('sponsored filter defaults to enabled and recognizes the supplied tracking 
   f.d.window.close();
 });
 
+test('LeasingMarkt logo hides organic listings but ordinary leasing offers and text mentions remain visible', async () => {
+  const f = filter(`
+    <article id="leasingmarkt" data-testid="list-item" data-relevance_adjustment="organic" data-ownership-models="le-lm-pb">
+      <span class="LeasingPrice_grossRate__3cSq1">€ 439/mtl.</span>
+      <span>Leasing Angebot</span>
+      <div class="ListItemSeller_leasingMarktWrapper__T68IF"><svg data-testid="logo-leasing-markt"><use xlink:href="/assets/icons.svg#leasingmarkt-de"></use></svg></div>
+    </article>
+    <article id="leasing" data-testid="list-item" data-ownership-models="le-lm-pb"><span>€ 439/mtl.</span><span>Leasing Angebot</span></article>
+    <article id="mention" data-testid="list-item"><p>Auch auf LeasingMarkt.de angeboten</p></article>
+  `);
+  await flush();
+  assert.equal(f.matches('leasingmarkt'), true);
+  assert.equal(f.d.window.getComputedStyle(f.d.window.document.getElementById('leasingmarkt')).display, 'none');
+  assert.equal(f.matches('leasing'), false);
+  assert.equal(f.matches('mention'), false);
+  f.change(false);
+  assert.equal(f.matches('leasingmarkt'), false);
+  f.change(true);
+  const dynamic = f.d.window.document.createElement('article');
+  dynamic.id = 'dynamic-leasingmarkt';
+  dynamic.setAttribute('data-testid', 'list-item');
+  f.d.window.document.body.append(dynamic);
+  assert.equal(f.matches(dynamic.id), false);
+  dynamic.innerHTML = '<svg data-testid="logo-leasing-markt"></svg>';
+  assert.equal(f.matches(dynamic.id), true);
+  dynamic.replaceChildren();
+  assert.equal(f.matches(dynamic.id), false, 'SPA can reuse a LeasingMarkt card as a regular listing');
+  f.d.window.close();
+});
+
+test('list content banners collapse their wrappers and empty survey space, reversibly and after lazy loading', async () => {
+  const banner = (id, size) => `<div id="${id}" class="AdContentBanner_adContentBannerMinHeight__7_fgA AdContentBanner_size_${size}__hash" style="min-height: 300px"><s24-ad-slot id="s24-osa-list-contentbanner_${id}-${size}"></s24-ad-slot></div>`;
+  const f = filter(`<main>
+    <div class="ListPage_resultsList__hHkVa">
+      <article id="regular" data-testid="list-item">Kaufangebot</article>
+      ${banner('small', 's')}${banner('medium', 'm')}${banner('large', 'l')}
+      <div id="surveyplaceholder" style="min-height: 250px"></div>
+    </div>
+    <nav id="pagination">Weiter</nav>${banner('below-pagination', 'l')}
+    <div id="other" class="AdContentBanner_adContentBannerMinHeight__hash"><s24-ad-slot id="other-slot"></s24-ad-slot></div>
+  </main><div id="outside" class="AdContentBanner_adContentBannerMinHeight__hash"><s24-ad-slot id="s24-osa-list-contentbanner_outside-s"></s24-ad-slot></div>`);
+  await flush();
+  const hidden = ['small', 'medium', 'large', 'below-pagination', 'surveyplaceholder'];
+  const main = f.d.window.document.querySelector('main');
+  const originalHTML = main.outerHTML;
+  for (const id of hidden) {
+    assert.equal(f.matches(id), true, id);
+    assert.equal(f.d.window.getComputedStyle(f.d.window.document.getElementById(id)).display, 'none', id);
+  }
+  for (const id of ['regular', 'pagination', 'other', 'outside']) assert.equal(f.matches(id), false, id);
+  f.change(false);
+  for (const id of hidden) assert.equal(f.matches(id), false, id);
+  assert.equal(main.outerHTML, originalHTML);
+  f.change(true);
+  main.insertAdjacentHTML('beforeend', banner('dynamic-banner', 'm'));
+  assert.equal(f.matches('dynamic-banner'), true);
+  const survey = f.d.window.document.getElementById('surveyplaceholder');
+  survey.innerHTML = '<button>Umfrage starten</button>';
+  assert.equal(f.matches('surveyplaceholder'), false);
+  survey.replaceChildren();
+  assert.equal(f.matches('surveyplaceholder'), true);
+  f.d.window.close();
+});
+
 test('turning off restores cards without editing them; changes also cover dynamically inserted cards', async () => {
   const f = filter('<article id="example" data-relevance_adjustment="sponsored" style="color: red"><button>Merken</button></article>');
   await flush();

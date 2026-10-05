@@ -1,6 +1,10 @@
 /* CSS also handles cards added or changed by SPA navigation / lazy loading. */
 html:not([data-fiesta-hide-sponsored="false"]) article[data-relevance_adjustment="sponsored"],
 html:not([data-fiesta-hide-sponsored="false"]) article[data-relevance-adjustment="sponsored"],
-html:not([data-fiesta-hide-sponsored="false"]) article[data-testid="list-item"]:has([class*="ListItemSponsored_"]) {
+html:not([data-fiesta-hide-sponsored="false"]) article[data-testid="list-item"]:has([class*="ListItemSponsored_"]),
+html:not([data-fiesta-hide-sponsored="false"]) article[data-testid="list-item"]:has([data-testid="logo-leasing-markt"]),
+/* Hide the full banner wrapper so its reserved minimum height disappears too. */
+html:not([data-fiesta-hide-sponsored="false"]) main [class*="AdContentBanner_adContentBannerMinHeight__"]:has(s24-ad-slot[id^="s24-osa-list-contentbanner_"]),
+html:not([data-fiesta-hide-sponsored="false"]) main [id="surveyplaceholder"]:empty {
   display: none !important;
 }
